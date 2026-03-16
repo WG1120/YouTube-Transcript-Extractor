@@ -7,7 +7,6 @@
 import re
 import sys
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.formatters import TextFormatter
 
 
 def extract_video_id(url: str) -> str | None:
@@ -30,18 +29,16 @@ def get_transcript(video_id: str) -> str:
     한국어 자막을 우선 시도하고, 없으면 영어, 그래도 없으면
     사용 가능한 첫 번째 자막을 가져옵니다.
     """
+    ytt_api = YouTubeTranscriptApi()
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["ko", "en"])
+        transcript = ytt_api.fetch(video_id, languages=["ko", "en"])
     except Exception:
         # 지정 언어가 없으면 사용 가능한 첫 번째 자막 시도
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = transcript_list.find_transcript(
-            list(transcript_list._manually_created_transcripts.keys())
-            or list(transcript_list._generated_transcripts.keys())
-        ).fetch()
+        transcript_list = ytt_api.list(video_id)
+        first_transcript = next(iter(transcript_list))
+        transcript = first_transcript.fetch()
 
-    formatter = TextFormatter()
-    return formatter.format_transcript(transcript)
+    return "\n".join(snippet.text for snippet in transcript)
 
 
 def save_to_file(text: str, video_id: str) -> str:
